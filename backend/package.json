@@ -1,0 +1,15 @@
+{
+  "name": "backend-manobrista",
+  "version": "1.0.0",
+  "description": "API e Socket.IO para o sistema de fila de manobristas",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.4"
+  }
+}

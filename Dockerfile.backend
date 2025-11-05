@@ -1,0 +1,16 @@
+# Dockerfile.backend (Localizado na Raiz do Projeto)
+
+FROM node:20-slim
+
+WORKDIR /usr/src/app
+
+# O caminho é 'backend/package.json' porque o contexto é a raiz do projeto.
+COPY backend/package.json .
+RUN npm install
+
+# O mesmo para o código fonte
+COPY backend/ .
+
+EXPOSE 3000
+
+CMD [ "npm", "start" ]
