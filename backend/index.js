@@ -8,11 +8,9 @@ const manobristasDB = require('./manobristas');
 const app = express();
 const server = http.createServer(app);
 
-// 🚨 CORREÇÃO FINAL DE CORS:
-// Usando a URL de Endpoint de Site Estático do seu Bucket S3.
+// 🚨 CONFIGURAÇÃO DE CORS FINAL (Adapte a URL do seu S3)
 const allowedOrigin = 'http://manobrista-josafasouza-app.s3-website-us-west-2.amazonaws.com';
 
-// Define a origem permitida para requisições HTTP
 app.use(cors({ origin: allowedOrigin })); 
 app.use(express.json());
 
@@ -23,13 +21,12 @@ const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // --- SOCKET.IO CONFIG ---
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigin, // Usando a mesma origem permitida para o Socket.IO
+        origin: allowedOrigin,
         methods: ['GET', 'POST']
     }
 });
 
 const emitirFilaAtualizada = async () => {
-    // Chamando getFila internamente, sem req e res
     const data = await manobristasDB.getFila();
     io.emit('fila_atualizada', data);
 };
@@ -59,12 +56,12 @@ app.post('/api/fila/chegada', manobristasDB.registrarChegada);
 app.post('/api/fila/chamar', manobristasDB.chamarProximo);
 app.post('/api/fila/retorno', manobristasDB.retornoManobrista);
 app.post('/api/fila/mover', manobristasDB.moverItemNaFila);
-
+app.delete('/api/fila/:id', manobristasDB.deletarItemDaFila); // <-- NOVA ROTA
 
 const PORT = process.env.PORT || 3000;
 
 const iniciarServidor = async () => {
-    // 1. LÓGICA DE RETRY PARA O DB (Solução ECONNREFUSED)
+    // 1. LÓGICA DE RETRY PARA O DB
     let tentativas = 10; 
     while (tentativas > 0) {
         try {
