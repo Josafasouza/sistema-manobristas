@@ -8,7 +8,12 @@ const manobristasDB = require('./manobristas');
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors({ origin: 'http://localhost:5173' })); 
+// 🚨 CORREÇÃO FINAL DE CORS:
+// Usando a URL de Endpoint de Site Estático do seu Bucket S3.
+const allowedOrigin = 'http://manobrista-josafasouza-app.s3-website-us-west-2.amazonaws.com';
+
+// Define a origem permitida para requisições HTTP
+app.use(cors({ origin: allowedOrigin })); 
 app.use(express.json());
 
 // --- FUNÇÃO AUXILIAR PARA ESPERA ---
@@ -18,7 +23,7 @@ const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // --- SOCKET.IO CONFIG ---
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:5173',
+        origin: allowedOrigin, // Usando a mesma origem permitida para o Socket.IO
         methods: ['GET', 'POST']
     }
 });
@@ -32,10 +37,6 @@ manobristasDB.setSocketNotifier(emitirFilaAtualizada);
 
 io.on('connection', async (socket) => {
     console.log(`Usuário conectado: ${socket.id}`);
-    // Envia o estado inicial da fila para o novo cliente
-    // ATENÇÃO: manobristasDB.getFila pode falhar aqui se o DB estiver lento.
-    // O ideal seria que getFila já tivesse uma lógica de retry, mas vamos confiar
-    // que o iniciarServidor() abaixo estabiliza tudo a tempo.
     try {
         socket.emit('fila_inicial', await manobristasDB.getFila());
     } catch (e) {
@@ -45,8 +46,6 @@ io.on('connection', async (socket) => {
 // --------------------------
 
 // --- ROTAS DA API (CRUD e Fila) ---
-// Note que as rotas são definidas ANTES do listen, mas o servidor só aceita requisições
-// APÓS o listen, que ocorre depois da inicialização do DB.
 
 // CRUD Manobristas (Admin)
 app.get('/api/manobristas', manobristasDB.getManobristas);
@@ -65,20 +64,20 @@ app.post('/api/fila/mover', manobristasDB.moverItemNaFila);
 const PORT = process.env.PORT || 3000;
 
 const iniciarServidor = async () => {
-    // 1. LÓGICA DE RETRY PARA O DB (SOLUÇÃO ECONNREFUSED)
-    let tentativas = 10; // Aumentando as tentativas para ser mais robusto
+    // 1. LÓGICA DE RETRY PARA O DB (Solução ECONNREFUSED)
+    let tentativas = 10; 
     while (tentativas > 0) {
         try {
             await db.inicializarDB();
             console.log("Conexão com o Banco de Dados estabelecida e tabelas verificadas.");
-            break; // Se inicializar com sucesso, saia do loop
+            break; 
         } catch (error) {
             console.error(`Aguardando DB... Tentativas restantes: ${--tentativas}. Erro: ${error.code || error.message}`);
             if (tentativas === 0) {
                 console.error("ERRO FATAL: Falha ao conectar ao Banco de Dados após múltiplas tentativas.");
                 process.exit(1);
             }
-            await esperar(2000); // Espera 2 segundos antes de tentar novamente
+            await esperar(2000);
         }
     }
     
