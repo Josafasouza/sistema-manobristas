@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-// 🚨 ALTERADO: Porta 3002
-const API_URL = 'http://localhost:3002/api';
+// 🚨 ALTERAÇÃO CRÍTICA: URL do Render para a API
+const API_URL = 'https://manobrista-api.onrender.com/api';
 
 const AdminDashboard = () => {
     const [manobristas, setManobristas] = useState([]);

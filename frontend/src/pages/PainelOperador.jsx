@@ -3,9 +3,11 @@ import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import io from 'socket.io-client';
 
-// 🚨 ALTERADO: Porta 3002
-const API_URL = 'http://localhost:3002/api';
-const SOCKET_URL = 'http://localhost:3002';
+// 🚨 URLs do Render
+const BASE_URL = 'https://manobrista-api.onrender.com';
+const API_URL = `${BASE_URL}/api`;
+const SOCKET_URL = BASE_URL;
+
 const socket = io(SOCKET_URL);
 
 // --- Componente AlertaVoz ---
@@ -23,7 +25,7 @@ const AlertaVoz = React.memo(({ nome }) => {
 function PainelOperador() {
     const [fila, setFila] = useState({ filaAtiva: [], emServico: [] });
     const [manobristas, setManobristas] = useState([]);
-    const [manobristaSelecionado, setManobristaSelecionado] = useState('');
+    const [manobristaSelecionado, setManobristasSelecionado] = useState('');
 
     const manobristasAtivos = manobristas.filter(m => m.status === 'ativo');
 
@@ -49,11 +51,24 @@ function PainelOperador() {
         fetchManobristas();
     }, [fetchManobristas]);
 
+    // --- NOVA FUNÇÃO DE EXCLUSÃO ---
+    const excluirItemDaFila = useCallback(async (filaItemId) => {
+        if (!window.confirm("Tem certeza que deseja remover este item da fila?")) return;
+        try {
+            // Requisição DELETE para o novo endpoint /api/fila/:id
+            await axios.delete(`${API_URL}/fila/${filaItemId}`);
+            // A atualização da fila será recebida via Socket.IO
+        } catch (e) {
+            alert(e.response?.data?.error || 'Erro ao excluir item da fila.');
+        }
+    }, []);
+    // -------------------------------
+    
     // 3. Ações da Fila
     const registrarChegada = useCallback(async () => {
         if (!manobristaSelecionado) return alert('Selecione um manobrista!');
         await axios.post(`${API_URL}/fila/chegada`, { manobristaId: manobristaSelecionado });
-        setManobristaSelecionado('');
+        setManobristasSelecionado('');
     }, [manobristaSelecionado]);
 
     const chamarProximo = useCallback(async () => {
@@ -92,7 +107,6 @@ function PainelOperador() {
             });
         } catch (e) {
             alert(e.response?.data?.error || 'Erro ao mover item.');
-            // Reverte em caso de erro
             setFila(fila); 
         }
     }, [fila]);
@@ -107,7 +121,7 @@ function PainelOperador() {
                 <h2>🚗 Registro de Chegada</h2>
                 <select 
                     value={manobristaSelecionado} 
-                    onChange={(e) => setManobristaSelecionado(e.target.value)}
+                    onChange={(e) => setManobristasSelecionado(e.target.value)}
                     style={{ padding: '8px', marginRight: '10px', width: '200px' }}
                 >
                     <option value="">-- Selecione o Manobrista --</option>
@@ -175,10 +189,27 @@ function PainelOperador() {
                                                     backgroundColor: snapshot.isDragging ? '#e0f7fa' : (index === 0 ? '#d4edda' : '#f8f9fa'),
                                                     border: index === 0 ? '2px solid #28a745' : '1px solid #ccc',
                                                     cursor: 'grab',
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between',
                                                     ...provided.draggableProps.style,
                                                 }}
                                             >
-                                                **{index + 1}. {item.nome}** (Mat: {item.id_manobrista})
+                                                <div>**{index + 1}. {item.nome}** (Mat: {item.id_manobrista})</div>
+                                                
+                                                {/* NOVO BOTÃO DE EXCLUIR MANUALMENTE */}
+                                                <button
+                                                    onClick={() => excluirItemDaFila(item.id)}
+                                                    style={{ 
+                                                        backgroundColor: '#dc3545', 
+                                                        color: 'white', 
+                                                        border: 'none', 
+                                                        padding: '5px 10px', 
+                                                        marginLeft: '10px',
+                                                        cursor: 'pointer' 
+                                                    }}
+                                                >
+                                                    Remover
+                                                </button>
                                             </div>
                                         )}
                                     </Draggable>
@@ -190,6 +221,7 @@ function PainelOperador() {
                 </DragDropContext>
                 {!fila.filaAtiva.length && <p>A fila de espera está vazia.</p>}
             </div>
+            {/* ... (fim do return) ... */}
         </div>
     );
 }
